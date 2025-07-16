@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Caza Colores</title>
+<style>
+  html, body {
+    margin: 0; 
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: #222; 
+    color: #eee; 
+    font-family: Arial, sans-serif;
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+    user-select: none;
+    cursor: url('https://i.postimg.cc/1XHXkXgx/pngtree-rat-rodent-graphic-domestic-vector-picture-image-10551922.png') 8 8, auto;
+    touch-action: none;
+  }
+
+  #game {
+    position: relative; 
+    width: 320px; 
+    height: 480px; 
+    border-radius: 10px;
+    overflow: hidden; 
+    margin-top: 20px;
+    display: none;
+  }
+
+  #background {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url('https://static-cdn.jtvnw.net/jtv_user_pictures/7571cc24-fe70-4a45-98b0-b49174ead2f5-profile_image-300x300.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: brightness(0.4);
+    opacity: 0;
+    transition: opacity 1s ease;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  @keyframes colorShift {
+    0% { filter: brightness(0.4) hue-rotate(0deg); }
+    50% { filter: brightness(0.4) hue-rotate(90deg); }
+    100% { filter: brightness(0.4) hue-rotate(360deg); }
+  }
+
+  .color-filters {
+    animation: colorShift 8s linear infinite;
+  }
+
+  .ball {
+    position: absolute; 
+    border-radius: 50%; 
+    width: 40px; 
+    height: 40px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    z-index: 1;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+  }
+
+  h1 { font-size: 36px; margin: 0; }
+  #instructions { font-size: 22px; margin-bottom: 10px; }
+  #targetColor { font-size: 28px; font-weight: bold; }
+  #score, #lives, #level, #timer {
+    font-size: 50px;
+    margin: 5px 10px;
+  }
+  #startButton {
+    font-size: 20px;
+    padding: 10px 20px;
+    margin-top: 15px;
+    cursor: pointer;
+  }
+
+  #level-up {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: gold;
+    font-size: 32px;
+    font-weight: bold;
+    display: none;
+    animation: levelFlash 1s ease-out;
+    text-shadow: 0 0 10px #fff;
+    z-index: 3;
+  }
+
+  @keyframes levelFlash {
+    0% { opacity: 0; transform: scale(0.5) translate(-50%, -50%); }
+    50% { opacity: 1; transform: scale(1.2) translate(-50%, -50%); }
+    100% { opacity: 0; transform: scale(1) translate(-50%, -50%); }
+  }
+
+  #fakeCursor {
+    position: fixed;
+    width: 32px;
+    height: 32px;
+    pointer-events: none;
+    background-image: url('https://i.postimg.cc/1XHXkXgx/pngtree-rat-rodent-graphic-domestic-vector-picture-image-10551922.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    transform: translate(-16px, -16px);
+    display: none;
+    z-index: 9999;
+  }
+
+  #footer {
+    position: fixed;
+    bottom: 5px;
+    width: 100%;
+    text-align: center;
+    color: #bbb;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  #winScreen {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: black;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: white;
+    text-align: center;
+  }
+
+  #winScreen img {
+    max-width: 90%;
+    max-height: 70%;
+    opacity: 0;
+    transition: opacity 2s;
+  }
+
+  #winScreen h1 {
+    font-size: 36px;
+    margin-top: 20px;
+    opacity: 0;
+    transition: opacity 2s;
+  }
+</style>
+</head>
+<body>
+
+<h1>Caza Colores</h1>
+<div id="timer">Tiempo restante: 20s</div>
+<div id="instructions">Pulsa SOLO las bolas del color: <span id="targetColor">?</span></div>
+<div id="score">Puntos: 0</div>
+<div id="lives">Vidas: 3</div>
+<div id="level">Nivel: 1</div>
+<button id="startButton">Iniciar</button>
+
+<div id="game">
+  <div id="background"></div>
+  <div id="level-up">¡Nivel Subido!</div>
+</div>
+
+<div id="fakeCursor"></div>
+
+<div id="winScreen">
+  <img src="https://previews.123rf.com/images/visible3dscience/visible3dscience1603/visible3dscience160304549/53247066-3d-rendered-illustration-of-rat-cartoon-character-with-winning-cup.jpg">
+  <h1>¡Has ganado!</h1>
+</div>
+
+<div id="footer">Hecho con energía del desierto desde Ciudad Obregón, México 🌵🔥</div>
+
+<script>
+  const allColors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
+  const game = document.getElementById('game');
+  const background = document.getElementById('background');
+  const targetColorSpan = document.getElementById('targetColor');
+  const scoreSpan = document.getElementById('score');
+  const livesSpan = document.getElementById('lives');
+  const levelSpan = document.getElementById('level');
+  const levelUpDiv = document.getElementById('level-up');
+  const timerSpan = document.getElementById('timer');
+  const startButton = document.getElementById('startButton');
+
+  let balls = [], score = 0, lives = 3, level = 1;
+  let baseSpeed = 1, maxLives = 5;
+  let activeColors = [...allColors.slice(0, 3)];
+  let targetColor = null;
+  let rotation = 0, rotationSpeed = 0, rotationInterval = null;
+  let levelTimer = null;
+  let levelTimeLimit = 20000;
+  let timeLeft = levelTimeLimit / 1000;
+  let countdownInterval = null;
+
+  function randomPosition() {
+    const x = Math.random() * (game.clientWidth - 40);
+    const y = Math.random() * (game.clientHeight - 40);
+    return { x, y };
+  }
+
+  function randomVelocity(speed) {
+    const angle = Math.random() * 2 * Math.PI;
+    return {
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed
+    };
+  }
+
+  function changeTargetColor() {
+    const coloresPresentes = [...new Set(balls.map(ball => ball.dataset.color))];
+    targetColor = coloresPresentes[Math.floor(Math.random() * coloresPresentes.length)];
+    targetColorSpan.textContent = targetColor.toUpperCase();
+    targetColorSpan.style.color = targetColor;
+  }
+
+  function createBall() {
+    const ball = document.createElement('div');
+    ball.classList.add('ball');
+    const color = activeColors[Math.floor(Math.random() * activeColors.length)];
+
+    ball.style.backgroundImage = "url('https://png.pngtree.com/png-clipart/20250418/original/pngtree-one-pice-off-cheese-png-image_20721607.png')";
+    const pos = randomPosition();
+    ball.style.left = pos.x + 'px';
+    ball.style.top = pos.y + 'px';
+    ball.dataset.color = color;
+
+    const filterMap = {
+      red: 'hue-rotate(-40deg) saturate(300%) brightness(90%)',
+      green: 'hue-rotate(90deg) saturate(150%) brightness(90%)',
+      blue: 'hue-rotate(200deg) saturate(150%) brightness(90%)',
+      yellow: 'hue-rotate(0deg) saturate(200%) brightness(110%)',
+      orange: 'hue-rotate(-10deg) saturate(400%) brightness(100%)',
+      purple: 'hue-rotate(270deg) saturate(150%) brightness(90%)'
+    };
+    ball.style.filter = filterMap[color];
+
+    const velocity = randomVelocity(baseSpeed);
+    ball.vx = velocity.vx;
+    ball.vy = velocity.vy;
+
+    ball.addEventListener('click', () => {
+      if (color === targetColor) {
+        score++;
+        scoreSpan.textContent = 'Puntos: ' + score;
+        checkLevelUp();
+        changeTargetColor();
+      } else {
+        lives--;
+        livesSpan.textContent = 'Vidas: ' + lives;
+        if (lives <= 0) {
+          alert('¡Juego terminado! Tu puntaje: ' + score);
+          resetGame();
+        }
+      }
+    });
+
+    game.appendChild(ball);
+    balls.push(ball);
+  }
+
+  function checkLevelUp() {
+    const newLevel = Math.floor(score / 5) + 1;
+    if (newLevel > level) {
+      level = newLevel;
+      levelSpan.textContent = 'Nivel: ' + level;
+
+      if (level >= 30) {
+        endGameWithVictory();
+        return;
+      }
+
+      baseSpeed += 0.2;
+      if (balls.length < 20) createBall();
+      if (level % 3 === 0 && lives < maxLives) {
+        lives++;
+        livesSpan.textContent = 'Vidas: ' + lives;
+      }
+      if (activeColors.length < allColors.length) {
+        activeColors = allColors.slice(0, Math.min(3 + level, allColors.length));
+      }
+      applyBackgroundEffects();
+      levelUpFlash();
+      startLevelTimer();
+    }
+  }
+
+  function endGameWithVictory() {
+    clearInterval(rotationInterval);
+    clearInterval(countdownInterval);
+    clearTimeout(levelTimer);
+
+    balls.forEach(ball => ball.remove());
+    balls = [];
+
+    game.style.display = 'none';
+
+    const winScreen = document.getElementById('winScreen');
+    const img = winScreen.querySelector('img');
+    const text = winScreen.querySelector('h1');
+    winScreen.style.display = 'flex';
+
+    setTimeout(() => {
+      img.style.opacity = 1;
+      text.style.opacity = 1;
+    }, 100);
+  }
+
+  function levelUpFlash() {
+    levelUpDiv.style.display = 'block';
+    levelUpDiv.style.animation = 'levelFlash 1s ease-out';
+    setTimeout(() => {
+      levelUpDiv.style.display = 'none';
+    }, 1000);
+  }
+
+  function applyBackgroundEffects() {
+    if (level < 5) {
+      background.style.opacity = 0;
+      clearInterval(rotationInterval);
+      rotationSpeed = 0;
+      rotation = 0;
+      background.style.transform = 'rotate(0deg)';
+      background.classList.remove('color-filters');
+      return;
+    }
+    if (level < 10) {
+      background.style.opacity = 1;
+      clearInterval(rotationInterval);
+      rotationSpeed = 0;
+      background.style.transform = 'rotate(0deg)';
+      background.classList.remove('color-filters');
+      return;
+    }
+    if (level < 15) {
+      background.style.opacity = 1;
+      rotationSpeed = 0.2;
+      background.classList.remove('color-filters');
+      clearInterval(rotationInterval);
+      return;
+    }
+    if (level < 20) {
+      background.style.opacity = 1;
+      background.classList.remove('color-filters');
+      if (rotationInterval) clearInterval(rotationInterval);
+      rotationInterval = setInterval(() => {
+        const speed = (Math.random() * 0.4 + 0.1) * (Math.random() > 0.5 ? 1 : -1);
+        rotationSpeed = speed;
+      }, 1000);
+      return;
+    }
+    background.style.opacity = 1;
+    background.classList.add('color-filters');
+    if (rotationInterval) clearInterval(rotationInterval);
+    rotationInterval = setInterval(() => {
+      const speed = (Math.random() * 0.4 + 0.1) * (Math.random() > 0.5 ? 1 : -1);
+      rotationSpeed = speed;
+    }, 1000);
+  }
+
+  function moveBalls() {
+    balls.forEach(ball => {
+      let x = parseFloat(ball.style.left);
+      let y = parseFloat(ball.style.top);
+
+      x += ball.vx;
+      y += ball.vy;
+
+      if (x <= 0 || x >= game.clientWidth - 40) ball.vx = -ball.vx;
+      if (y <= 0 || y >= game.clientHeight - 40) ball.vy = -ball.vy;
+
+      ball.style.left = Math.max(0, Math.min(x, game.clientWidth - 40)) + 'px';
+      ball.style.top = Math.max(0, Math.min(y, game.clientHeight - 40)) + 'px';
+    });
+  }
+
+  function startCountdown() {
+    clearInterval(countdownInterval);
+    timeLeft = levelTimeLimit / 1000;
+    timerSpan.textContent = `Tiempo restante: ${timeLeft}s`;
+
+    countdownInterval = setInterval(() => {
+      timeLeft--;
+      timerSpan.textContent = `Tiempo restante: ${timeLeft}s`;
+      if (timeLeft <= 0) {
+        clearInterval(countdownInterval);
+      }
+    }, 1000);
+  }
+
+  function startLevelTimer() {
+    if (levelTimer) clearTimeout(levelTimer);
+    startCountdown();
+    levelTimer = setTimeout(() => {
+      alert('¡Se acabó el tiempo! No subiste de nivel a tiempo.');
+      resetGame();
+    }, levelTimeLimit);
+  }
+
+  function resetGame() {
+    balls.forEach(ball => ball.remove());
+    balls = [];
+    score = 0;
+    lives = 3;
+    level = 1;
+    baseSpeed = 1;
+    activeColors = [...allColors.slice(0, 3)];
+    scoreSpan.textContent = 'Puntos: 0';
+    livesSpan.textContent = 'Vidas: 3';
+    levelSpan.textContent = 'Nivel: 1';
+    clearInterval(rotationInterval);
+    rotationSpeed = 0;
+    rotation = 0;
+    background.style.opacity = 0;
+    background.classList.remove('color-filters');
+    clearTimeout(levelTimer);
+    clearInterval(countdownInterval);
+    timeLeft = levelTimeLimit / 1000;
+    timerSpan.textContent = `Tiempo restante: ${timeLeft}s`;
+    for(let i=0; i<7; i++) createBall();
+    changeTargetColor();
+    startLevelTimer();
+  }
+
+  function gameLoop() {
+    moveBalls();
+    if(rotationSpeed !== 0){
+      rotation += rotationSpeed;
+      if(rotation > 360) rotation -= 360;
+      else if(rotation < -360) rotation += 360;
+      background.style.transform = `rotate(${rotation}deg)`;
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  startButton.addEventListener('click', () => {
+    startButton.style.display = 'none';
+    game.style.display = 'block';
+    resetGame();
+    gameLoop();
+  });
+
+  const fakeCursor = document.getElementById('fakeCursor');
+
+  function isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
+  if (isTouchDevice()) {
+    document.body.style.cursor = 'none';
+
+    window.addEventListener('touchstart', (e) => {
+      if(e.touches.length > 0){
+        const touch = e.touches[0];
+        fakeCursor.style.display = 'block';
+        fakeCursor.style.left = touch.clientX + 'px';
+        fakeCursor.style.top = touch.clientY + 'px';
+      }
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if(e.touches.length > 0){
+        const touch = e.touches[0];
+        fakeCursor.style.left = touch.clientX + 'px';
+        fakeCursor.style.top = touch.clientY + 'px';
+      }
+    });
+  }
+</script>
+</body>
+</html>
