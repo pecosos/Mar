@@ -23,6 +23,11 @@
     user-select: text;
     cursor: url('https://i.postimg.cc/1XHXkXgx/pngtree-rat-rodent-graphic-domestic-vector-picture-image-10551922.png') 8 8, pointer;
     touch-action: none;
+    
+    body, .ball {
+  -webkit-tap-highlight-color: transparent;
+}
+
   }
 
   #game {
@@ -71,6 +76,16 @@
     background-position: center;
     background-size: cover;
   }
+  
+  body, .ball {
+  -webkit-tap-highlight-color: transparent;
+}
+
+  
+  .ball:focus {
+  outline: 2px solid transparent;
+}
+
 
   h1 { font-size: 36px; margin: 0; }
   #instructions { font-size: 22px; margin-bottom: 10px; }
@@ -221,6 +236,8 @@
   let levelTimeLimit = 20000;
   let timeLeft = levelTimeLimit / 1000;
   let countdownInterval = null;
+
+  let currentMode = 'easy'; // ← NUEVO: guardamos el modo actual
 
   function randomPosition() {
     const x = Math.random() * (game.clientWidth - 40);
@@ -436,6 +453,19 @@
   }
 
   function resetGame() {
+    // Aquí reiniciamos la velocidad base según el modo actual para evitar bug
+    if (currentMode === 'easy') {
+      baseSpeed = 1;
+      maxSpeed = 1;
+      speedIncrement = 0.2;
+      maxBalls = 10;
+    } else {
+      baseSpeed = 1;
+      maxSpeed = 20;
+      speedIncrement = 1;
+      maxBalls = 20;
+    }
+
     balls.forEach(ball => ball.remove());
     balls = [];
     score = 0;
@@ -474,6 +504,8 @@
   }
 
   function startGame(difficulty) {
+    currentMode = difficulty; // Guardar modo para reset
+
     startEasyButton.style.display = 'none';
     startHardButton.style.display = 'none';
     game.style.display = 'block';
@@ -498,32 +530,6 @@
   startEasyButton.addEventListener('click', () => startGame('easy'));
   startHardButton.addEventListener('click', () => startGame('hard'));
 
-  const fakeCursor = document.getElementById('fakeCursor');
-
-  function isTouchDevice() {
-    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  }
-
-  if (isTouchDevice()) {
-    document.body.style.cursor = 'none';
-
-    window.addEventListener('touchstart', (e) => {
-      if(e.touches.length > 0){
-        const touch = e.touches[0];
-        fakeCursor.style.display = 'block';
-        fakeCursor.style.left = touch.clientX + 'px';
-        fakeCursor.style.top = touch.clientY + 'px';
-      }
-    });
-
-    window.addEventListener('touchmove', (e) => {
-      if(e.touches.length > 0){
-        const touch = e.touches[0];
-        fakeCursor.style.left = touch.clientX + 'px';
-        fakeCursor.style.top = touch.clientY + 'px';
-      }
-    });
-  }
 </script>
 </body>
 </html>
