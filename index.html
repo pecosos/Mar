@@ -239,6 +239,27 @@
 
   let currentMode = 'easy'; // ← NUEVO: guardamos el modo actual
 
+  // --- AUDIO CONTEXT GLOBAL PARA EVITAR ERROR DE MÚLTIPLES CONTEXTOS ---
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playNote(frequency, duration = 300) {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start();
+
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000);
+
+    oscillator.stop(audioCtx.currentTime + duration / 1000);
+  }
+
   function randomPosition() {
     const x = Math.random() * (game.clientWidth - 40);
     const y = Math.random() * (game.clientHeight - 40);
@@ -289,11 +310,13 @@
       if (ball.dataset.color === targetColor) {
         score++;
         scoreSpan.textContent = 'Puntos: ' + score;
+        playNote(440); // La (440 Hz) para acierto
         checkLevelUp();
         changeTargetColor();
       } else {
         lives--;
         livesSpan.textContent = 'Vidas: ' + lives;
+        playNote(293.66); // Re (293.66 Hz) más grave para error
         if (lives <= 0) {
           alert('¡Juego terminado! Tu puntaje: ' + score);
           resetGame();
