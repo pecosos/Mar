@@ -20,8 +20,8 @@
     flex-direction: column; 
     align-items: center; 
     justify-content: center;
-    user-select: none;
-    cursor: url('https://i.postimg.cc/1XHXkXgx/pngtree-rat-rodent-graphic-domestic-vector-picture-image-10551922.png') 8 8, auto;
+    user-select: text;
+    cursor: url('https://i.postimg.cc/1XHXkXgx/pngtree-rat-rodent-graphic-domestic-vector-picture-image-10551922.png') 8 8, pointer;
     touch-action: none;
   }
 
@@ -79,10 +79,12 @@
     font-size: 50px;
     margin: 5px 10px;
   }
-  #startButton {
+
+  /* Botones nuevos */
+  #startEasyButton, #startHardButton {
     font-size: 20px;
     padding: 10px 20px;
-    margin-top: 15px;
+    margin: 10px 10px 0 10px;
     cursor: pointer;
   }
 
@@ -169,7 +171,10 @@
 <div id="score">Puntos: 0</div>
 <div id="lives">Vidas: 3</div>
 <div id="level">Nivel: 1</div>
-<button id="startButton">Iniciar</button>
+
+<!-- BOTONES DE INICIO -->
+<button id="startEasyButton">Inicio Fácil</button>
+<button id="startHardButton">Inicio Difícil</button>
 
 <div id="game">
   <div id="background"></div>
@@ -179,7 +184,7 @@
 <div id="fakeCursor"></div>
 
 <div id="winScreen">
-  <img src="https://previews.123rf.com/images/visible3dscience/visible3dscience1603/visible3dscience160304549/53247066-3d-rendered-illustration-of-rat-cartoon-character-with-winning-cup.jpg">
+  <img src="https://previews.123rf.com/images/visible3dscience/visible3dscience1603/visible3dscience160304549/53247066-3d-rendered-illustration-of-rat-cartoon-character-with-winning-cup.jpg" alt="Ganador">
   <h1>¡Has ganado!</h1>
 </div>
 
@@ -195,10 +200,20 @@
   const levelSpan = document.getElementById('level');
   const levelUpDiv = document.getElementById('level-up');
   const timerSpan = document.getElementById('timer');
-  const startButton = document.getElementById('startButton');
+  const startEasyButton = document.getElementById('startEasyButton');
+  const startHardButton = document.getElementById('startHardButton');
+  const winScreen = document.getElementById('winScreen');
 
   let balls = [], score = 0, lives = 3, level = 1;
-  let baseSpeed = 1, maxLives = 5;
+  let maxLives = 5;
+
+  // Variables para velocidad y dificultad
+  let baseSpeed = 1;
+  let maxSpeed = 20;
+  let speedIncrement = 1;
+
+  let maxBalls = 20; // máximo bolas (20 difícil, 10 fácil)
+
   let activeColors = [...allColors.slice(0, 3)];
   let targetColor = null;
   let rotation = 0, rotationSpeed = 0, rotationInterval = null;
@@ -254,7 +269,7 @@
     ball.vy = velocity.vy;
 
     ball.addEventListener('click', () => {
-      if (color === targetColor) {
+      if (ball.dataset.color === targetColor) {
         score++;
         scoreSpan.textContent = 'Puntos: ' + score;
         checkLevelUp();
@@ -284,15 +299,23 @@
         return;
       }
 
-      baseSpeed += 0.2;
-      if (balls.length < 20) createBall();
+      // Aumentar velocidad según dificultad y límite
+      baseSpeed = Math.min(baseSpeed + speedIncrement, maxSpeed);
+
+      // Crear bola si no se pasó el máximo permitido
+      if (balls.length < maxBalls) createBall();
+
+      // Incrementar vidas cada 3 niveles, hasta maxLives
       if (level % 3 === 0 && lives < maxLives) {
         lives++;
         livesSpan.textContent = 'Vidas: ' + lives;
       }
+
+      // Aumentar colores activos
       if (activeColors.length < allColors.length) {
         activeColors = allColors.slice(0, Math.min(3 + level, allColors.length));
       }
+
       applyBackgroundEffects();
       levelUpFlash();
       startLevelTimer();
@@ -309,11 +332,10 @@
 
     game.style.display = 'none';
 
-    const winScreen = document.getElementById('winScreen');
-    const img = winScreen.querySelector('img');
-    const text = winScreen.querySelector('h1');
     winScreen.style.display = 'flex';
 
+    const img = winScreen.querySelector('img');
+    const text = winScreen.querySelector('h1');
     setTimeout(() => {
       img.style.opacity = 1;
       text.style.opacity = 1;
@@ -395,9 +417,11 @@
 
     countdownInterval = setInterval(() => {
       timeLeft--;
-      timerSpan.textContent = `Tiempo restante: ${timeLeft}s`;
       if (timeLeft <= 0) {
         clearInterval(countdownInterval);
+        timerSpan.textContent = `Tiempo restante: 0s`;
+      } else {
+        timerSpan.textContent = `Tiempo restante: ${timeLeft}s`;
       }
     }, 1000);
   }
@@ -417,8 +441,6 @@
     score = 0;
     lives = 3;
     level = 1;
-    baseSpeed = 1;
-    activeColors = [...allColors.slice(0, 3)];
     scoreSpan.textContent = 'Puntos: 0';
     livesSpan.textContent = 'Vidas: 3';
     levelSpan.textContent = 'Nivel: 1';
@@ -431,7 +453,11 @@
     clearInterval(countdownInterval);
     timeLeft = levelTimeLimit / 1000;
     timerSpan.textContent = `Tiempo restante: ${timeLeft}s`;
-    for(let i=0; i<7; i++) createBall();
+    winScreen.style.display = 'none';
+
+    // Crear bolas iniciales según maxBalls (pero mínimo 7 para que no quede aburrido)
+    const initialBalls = Math.min(maxBalls, 7);
+    for(let i=0; i<initialBalls; i++) createBall();
     changeTargetColor();
     startLevelTimer();
   }
@@ -447,12 +473,30 @@
     requestAnimationFrame(gameLoop);
   }
 
-  startButton.addEventListener('click', () => {
-    startButton.style.display = 'none';
+  function startGame(difficulty) {
+    startEasyButton.style.display = 'none';
+    startHardButton.style.display = 'none';
     game.style.display = 'block';
+
+    if(difficulty === 'easy') {
+      baseSpeed = 1;
+      maxSpeed = 1;
+      speedIncrement = 0.2;
+      maxBalls = 10;
+    } else {
+      baseSpeed = 1;
+      maxSpeed = 20;
+      speedIncrement = 1;
+      maxBalls = 20;
+    }
+
+    activeColors = [...allColors.slice(0, 3)];
     resetGame();
     gameLoop();
-  });
+  }
+
+  startEasyButton.addEventListener('click', () => startGame('easy'));
+  startHardButton.addEventListener('click', () => startGame('hard'));
 
   const fakeCursor = document.getElementById('fakeCursor');
 
